@@ -1,0 +1,18 @@
+application:
+  kafka-values:
+    topic: vehicle-telemetry-topic
+    bootstrap-servers: localhost:9092
+    schema:
+      registry:
+        url: http://localhost:8081
+        auto-register: true
+        use-latest-version: true
+
+quarkus:
+  http:
+    port: 8001
+  devservices:
+    enabled: false
+  kafka:
+    devservices:
+      enabled: false

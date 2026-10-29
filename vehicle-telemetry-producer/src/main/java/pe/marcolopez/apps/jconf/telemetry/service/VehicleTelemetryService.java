@@ -13,7 +13,6 @@ import pe.marcolopez.apps.jconf.telemetry.mapper.VehicleTelemetryMapper;
 import pe.marcolopez.apps.jconf.telemetry.resource.dto.PublishResponse;
 import pe.marcolopez.apps.jconf.telemetry.resource.dto.VehicleTelemetryInput;
 import pe.marcolopez.apps.jconf.telemetry.util.KafkaValues;
-
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -52,7 +51,7 @@ public class VehicleTelemetryService {
     private void sendAsyncEvent(VehicleTelemetry event) throws ExecutionException, InterruptedException, TimeoutException {
         var key = event.getVehicleId();
         var headers = new RecordHeaders().add("source", "vehicle-telemetry-producer".getBytes());
-        var record = new ProducerRecord<String, VehicleTelemetry>(
+        var record = new ProducerRecord<>(
                 kafkaValues.topic(),
                 null,
                 key,

@@ -1,0 +1,48 @@
+application:
+  kafka-values:
+    topic: vehicle-telemetry-topic
+    bootstrap-servers: localhost:9092
+    schema:
+      registry:
+        url: http://localhost:8081
+        auto-register: false
+        use-latest-version: true
+    consumer:
+      group-id: vehicle-telemetry-cg01
+      client-id: vehicle-telemetry-client-01
+      max-poll-records: 500
+      avro:
+        reader: true
+      auto:
+        offset:
+          reset: earliest
+      enable:
+        auto:
+          commit: false
+  internal-values:
+    retries: 3
+    semaphore:
+      permits: 1
+
+quarkus:
+  http:
+    port: 8101
+  devservices:
+    enabled: false
+  kafka:
+    devservices:
+      enabled: false
+  datasource:
+    db-kind: postgresql
+    username: postgres
+    password: 123456789
+    jdbc:
+      url: jdbc:postgresql://localhost:54321/db_vehicle_telemetry
+      max-size: 1
+      acquisition-timeout: 10
+  hibernate-orm:
+    log:
+      sql: false
+      format-sql: false
+    database:
+      generation: none

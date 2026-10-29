@@ -8,6 +8,9 @@ application:
         auto-register: true
         use-latest-version: true
 
+  load-test:
+    enabled: true
+
 quarkus:
   http:
     port: 8001

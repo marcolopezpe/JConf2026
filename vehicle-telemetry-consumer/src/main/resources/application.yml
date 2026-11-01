@@ -8,7 +8,7 @@ application:
         auto-register: false
         use-latest-version: true
     consumer:
-      group-id: vehicle-telemetry-cg01
+      group-id: ${CONSUMER_GROUP_ID:vehicle-telemetry-cg01}
       client-id: vehicle-telemetry-client-01
       max-poll-records: 500
       avro:
@@ -23,6 +23,16 @@ application:
     retries: 3
     semaphore:
       permits: 1
+  telemetry:
+    persistence:
+      mode: ${TELEMETRY_MODE:single} # single | batch | copy
+    retry:
+      initial-backoff-ms: 1000
+      max-backoff-ms: 15000
+    benchmark:
+      idle-timeout-ms: 5000 # sin mensajes durante este tiempo = fin de la corrida
+    batch:
+      size: 500
 
 quarkus:
   http:
@@ -37,7 +47,7 @@ quarkus:
     username: postgres
     password: 123456789
     jdbc:
-      url: jdbc:postgresql://localhost:15432/db_vehicle_telemetry
+      url: jdbc:postgresql://localhost:5431/db_vehicle_telemetry
       max-size: 1
       acquisition-timeout: 10
   hibernate-orm:

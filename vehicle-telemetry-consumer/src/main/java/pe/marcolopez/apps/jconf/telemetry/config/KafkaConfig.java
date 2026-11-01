@@ -24,6 +24,7 @@ public class KafkaConfig {
     KafkaValues kafkaValues;
 
     @Produces
+    @Singleton
     @Named("consumer")
     public Consumer<String, VehicleTelemetry> createConsumer() {
         var props = new Properties();

@@ -9,8 +9,8 @@ application:
         use-latest-version: true
     consumer:
       group-id: ${CONSUMER_GROUP_ID:vehicle-telemetry-cg01}
-      client-id: vehicle-telemetry-client-01
-      max-poll-records: 500
+      client-id: ${CONSUMER_CLIENT_ID:vehicle-telemetry-cid01}
+      max-poll-records: ${MAX_POLL_RECORDS:500}
       avro:
         reader: true
       auto:
@@ -22,10 +22,13 @@ application:
   internal-values:
     retries: 3
     semaphore:
-      permits: 1
+      permits: ${VT_WORKERS:1}
   telemetry:
     persistence:
       mode: ${TELEMETRY_MODE:single} # single | batch | copy
+    concurrency:
+      virtual-threads: ${VIRTUAL_THREADS:false}
+      chunk-size: ${VT_CHUNK_SIZE:100}
     retry:
       initial-backoff-ms: 1000
       max-backoff-ms: 15000
@@ -47,9 +50,16 @@ quarkus:
     username: postgres
     password: 123456789
     jdbc:
-      url: jdbc:postgresql://localhost:5431/db_vehicle_telemetry
-      max-size: 1
+      # connectTimeout/loginTimeout/socketTimeout en segundos: ninguna espera queda bloqueada para siempre.
+      # tcpKeepAlive detecta conexiones que un firewall o NAT cortó en silencio.
+      url: jdbc:postgresql://localhost:5431/db_vehicle_telemetry?connectTimeout=5&loginTimeout=5&socketTimeout=60&tcpKeepAlive=true
+      max-size: ${JDBC_POOL_SIZE:1}
       acquisition-timeout: 10
+      # Descartar conexiones muertas en lugar de entregarlas:
+      validation-query-sql: SELECT 1
+      background-validation-interval: 10S   # revisa conexiones en reposo cada 10 s (por defecto 2M)
+      foreground-validation-interval: 1S    # al pedir una conexión que estuvo ociosa >1 s, la valida antes
+      max-lifetime: 30M                     # recicla conexiones viejas
   hibernate-orm:
     log:
       sql: false

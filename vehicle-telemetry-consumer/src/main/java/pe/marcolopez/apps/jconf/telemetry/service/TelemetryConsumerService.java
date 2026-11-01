@@ -11,7 +11,11 @@ import org.apache.kafka.clients.consumer.Consumer;
 import pe.marcolopez.apps.jconf.telemetry.avro.VehicleTelemetry;
 import pe.marcolopez.apps.jconf.telemetry.benchmark.BenchmarkRecorder;
 import pe.marcolopez.apps.jconf.telemetry.persistence.PersistenceStrategyResolver;
+import pe.marcolopez.apps.jconf.telemetry.persistence.concurrent.VirtualThreadPersistenceStrategy;
+import pe.marcolopez.apps.jconf.telemetry.util.InternalValues;
 import pe.marcolopez.apps.jconf.telemetry.util.KafkaValues;
+import pe.marcolopez.apps.jconf.telemetry.util.TelemetryValues;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +38,12 @@ public class TelemetryConsumerService {
     KafkaValues kafkaValues;
 
     @Inject
+    TelemetryValues values;
+
+    @Inject
+    InternalValues internalValues;
+
+    @Inject
     PersistenceStrategyResolver resolver;
 
     @Inject
@@ -51,8 +61,21 @@ public class TelemetryConsumerService {
     void start(@Observes StartupEvent event) {
         // Falla al arrancar (con mensaje claro) si el modo no existe o no esta implementado.
         var strategy = resolver.resolve();
+
+        // virtual-threads = false -> camino secuencial de siempre.
+        // virtual-threads = true  -> la misma estrategia, pero por sublotes en Virtual Threads (workers a la vez).
+        boolean virtualThreads = values.concurrency().virtualThreads();
+        int chunkSize = virtualThreads ? values.concurrency().chunkSize() : 0;
+        if (virtualThreads) {
+            int workers = internalValues.semaphore().permits();   // el semaforo que ya existe en el YAML
+            strategy = new VirtualThreadPersistenceStrategy(strategy, workers, chunkSize);
+            log.info("### Virtual Threads ACTIVOS: workers={}, chunk-size={}", workers, chunkSize);
+        } else {
+            log.info("### Virtual Threads desactivados: persistencia secuencial en el hilo del ciclo.");
+        }
+
         processor.use(strategy);
-        recorder.configure(strategy.mode().id(), strategy.workers());
+        recorder.configure(strategy.mode().id(), strategy.workers(), virtualThreads, chunkSize);
 
         executor = Executors.newSingleThreadExecutor(
                 Thread.ofVirtual()
@@ -61,8 +84,8 @@ public class TelemetryConsumerService {
         );
         executor.submit(pollLoop::run);
 
-        log.info("### Consumer iniciado. topic={}, groupId={}, strategy={}",
-                kafkaValues.topic(), kafkaValues.consumer().groupId(), strategy.mode().id());
+        log.info("### Consumer iniciado. topic={}, groupId={}, strategy={}, workers={}",
+                kafkaValues.topic(), kafkaValues.consumer().groupId(), strategy.mode().id(), strategy.workers());
     }
 
     void stop(@Observes ShutdownEvent event) {

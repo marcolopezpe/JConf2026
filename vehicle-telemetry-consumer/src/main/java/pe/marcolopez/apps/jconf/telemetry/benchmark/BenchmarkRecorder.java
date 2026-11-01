@@ -34,8 +34,8 @@ public class BenchmarkRecorder {
             INSERT INTO benchmark_run
                 (strategy, total_events, persisted_events, duplicated_events, failed_events,
                  workers, jdbc_pool_size, started_at, finished_at, duration_ms,
-                 throughput_events_per_second)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 throughput_events_per_second, virtual_threads, chunk_size)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
     @Inject
@@ -49,6 +49,8 @@ public class BenchmarkRecorder {
 
     private String strategy = "unknown";
     private int workers = 1;
+    private boolean virtualThreads = false;
+    private int chunkSize = 0;   // 0 = no aplica (sin Virtual Threads)
 
     // Estado de la corrida en curso
     private boolean active;
@@ -63,8 +65,15 @@ public class BenchmarkRecorder {
     private long maxBatchNanos;
 
     public void configure(String strategy, int workers) {
+        configure(strategy, workers, false, 0);
+    }
+
+    /** virtualThreads y chunkSize quedan en benchmark_run para distinguir cada corrida. */
+    public void configure(String strategy, int workers, boolean virtualThreads, int chunkSize) {
         this.strategy = strategy;
         this.workers = workers;
+        this.virtualThreads = virtualThreads;
+        this.chunkSize = chunkSize;
     }
 
     /** Registra un lote (un poll) ya persistido y confirmado. */
@@ -121,6 +130,8 @@ public class BenchmarkRecorder {
             ps.setTimestamp(9, Timestamp.from(finishedAt));
             ps.setLong(10, durationMs);
             ps.setBigDecimal(11, throughput);
+            ps.setBoolean(12, virtualThreads);
+            ps.setInt(13, chunkSize);
             ps.executeUpdate();
         } catch (SQLException e) {
             log.warn("### No se pudo guardar benchmark_run (se reintentara): {}", e.getMessage());
@@ -130,12 +141,12 @@ public class BenchmarkRecorder {
         log.info("""
 
                 ### ===================== RESULTADO DE LA CORRIDA =====================
-                ### strategy={}  workers={}  jdbc_pool_size={}
+                ### strategy={}  workers={}  jdbc_pool_size={}  virtual_threads={}  chunk_size={}
                 ### total={}  persisted={}  duplicated={}  failed={}
                 ### duration_ms={}  throughput={} eventos/s
                 ### ms_por_evento={}  lotes={}  ms_promedio_lote={}  ms_max_lote={}
                 ### ===================================================================""",
-                strategy, workers, jdbcPoolSize,
+                strategy, workers, jdbcPoolSize, virtualThreads, chunkSize,
                 total, persisted, duplicated, failed,
                 durationMs, throughput,
                 total == 0 ? "-" : String.format("%.3f", (double) durationMs / total),

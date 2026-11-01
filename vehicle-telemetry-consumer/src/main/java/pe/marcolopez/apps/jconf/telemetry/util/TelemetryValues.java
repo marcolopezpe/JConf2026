@@ -21,6 +21,8 @@ public interface TelemetryValues {
 
     Retry retry();
 
+    Concurrency concurrency();
+
     Benchmark benchmark();
 
     interface Persistence {
@@ -34,6 +36,17 @@ public interface TelemetryValues {
         /** Cuantos INSERT se envian juntos en cada executeBatch(). Todos dentro de una misma transaccion por poll. */
         @WithDefault("500")
         int size();
+    }
+
+    interface Concurrency {
+
+        /** INTERRUPTOR. false = camino secuencial de siempre; true = los sublotes se persisten en Virtual Threads. */
+        @WithDefault("false")
+        boolean virtualThreads();
+
+        /** Tamano de cada sublote. Con max-poll-records=500 y chunk-size=100 salen 5 sublotes por poll. */
+        @WithDefault("100")
+        int chunkSize();
     }
 
     interface Retry {

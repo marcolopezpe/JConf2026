@@ -5,7 +5,7 @@ application:
     schema:
       registry:
         url: http://localhost:8081
-        auto-register: true
+        auto-register: false
         use-latest-version: true
 
   load-test:

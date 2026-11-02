@@ -10,6 +10,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.errors.WakeupException;
 import pe.marcolopez.apps.jconf.telemetry.avro.VehicleTelemetry;
 import pe.marcolopez.apps.jconf.telemetry.benchmark.BenchmarkRecorder;
+import pe.marcolopez.apps.jconf.telemetry.dlq.DeadLetterPublisher;
 import pe.marcolopez.apps.jconf.telemetry.persistence.PersistenceResult;
 import pe.marcolopez.apps.jconf.telemetry.persistence.TelemetryPersistenceException;
 import pe.marcolopez.apps.jconf.telemetry.persistence.TelemetryPersistenceStrategy;
@@ -52,6 +53,9 @@ public class RecordProcessor {
     @Inject
     BenchmarkRecorder recorder;
 
+    @Inject
+    DeadLetterPublisher dlq;
+
     private TelemetryPersistenceStrategy strategy;
 
     /** Lo llama el arranque una vez resuelta la estrategia segun la propiedad. */
@@ -65,6 +69,9 @@ public class RecordProcessor {
 
         for (var record : records) {
             if (record.value() == null) {
+                if (dlq.enabled()) {
+                    dlq.publishNullValue(record);   // si falla, lanza y el poll se reprocesa completo
+                }
                 nullValues++;
             } else {
                 events.add(record.value());

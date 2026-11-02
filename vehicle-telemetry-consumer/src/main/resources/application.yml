@@ -36,6 +36,10 @@ application:
       idle-timeout-ms: 5000 # sin mensajes durante este tiempo = fin de la corrida
     batch:
       size: 500
+    dlq:
+      enabled: ${DLQ_ENABLED:true}
+      topic: ${DLQ_TOPIC:vehicle-telemetry-dlq}
+      send-timeout-ms: ${DLQ_SEND_TIMEOUT_MS:10000}
 
 quarkus:
   http:

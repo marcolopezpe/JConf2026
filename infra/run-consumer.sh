@@ -28,4 +28,4 @@ echo
 cd "$HERE/../vehicle-telemetry-consumer"
 TELEMETRY_MODE="$MODE" \
 CONSUMER_GROUP_ID="$GROUP" \
-./mvnw quarkus:dev
+./mvnw clean compile quarkus:dev

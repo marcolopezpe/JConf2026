@@ -11,6 +11,8 @@ import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.errors.WakeupException;
 import pe.marcolopez.apps.jconf.telemetry.avro.VehicleTelemetry;
 import pe.marcolopez.apps.jconf.telemetry.benchmark.BenchmarkRecorder;
+import pe.marcolopez.apps.jconf.telemetry.dlq.DeadLetterPublisher;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import pe.marcolopez.apps.jconf.telemetry.util.Backoff;
 import pe.marcolopez.apps.jconf.telemetry.util.KafkaValues;
 import pe.marcolopez.apps.jconf.telemetry.util.TelemetryValues;
@@ -49,6 +51,9 @@ public class TelemetryPollLoop {
 
     @Inject
     BenchmarkRecorder recorder;
+
+    @Inject
+    DeadLetterPublisher dlq;
 
     /** Bloqueante. Se ejecuta en un virtual thread dedicado. */
     public void run() {
@@ -101,22 +106,28 @@ public class TelemetryPollLoop {
 
     /**
      * poll() lanza RecordDeserializationException con un mensaje ilegible. Antes eso mataba el loop.
-     * Ahora: mensaje malo -> se salta y se cuenta (pendiente: enviarlo a la DLQ);
-     * Schema Registry inaccesible -> NO se descarta nada, se espera y se reintenta.
+     * Ahora: mensaje malo -> se guarda en la DLQ (original, con headers) y recien entonces se salta;
+     *        si la DLQ no responde, NO se salta: se reintenta (nunca se pierde un mensaje);
+     * Schema Registry inaccesible (red o 5xx) -> NO se descarta nada, se espera y se reintenta.
      */
     private ConsumerRecords<String, VehicleTelemetry> pollSafely() {
         try {
             return consumer.poll(POLL_TIMEOUT);
         } catch (RecordDeserializationException e) {
-            if (hasCause(e, IOException.class)) {
+            if (isTransient(e)) {
                 log.error("### No se pudo deserializar (Schema Registry inaccesible?). Se reintenta. Causa: {}",
                         rootMessage(e));
                 sleepQuietly(Math.min(values.retry().maxBackoffMs(), 5_000L));
             } else {
                 TopicPartition partition = e.topicPartition();
+                if (dlq.enabled()) {
+                    // Si esto lanza, el offset NO avanza: el ciclo reintenta y el mensaje no se pierde.
+                    dlq.publishDeserializationFailure(partition, e.offset(), e);
+                }
                 consumer.seek(partition, e.offset() + 1);
                 recorder.addFailed(1);
-                log.warn("### Mensaje invalido descartado (pendiente DLQ). partition={}, offset={}, causa={}",
+                log.warn("### Mensaje invalido enviado a la DLQ={}. partition={}, offset={}, causa={}",
+                        dlq.enabled() ? "si" : "NO (deshabilitada, descartado)",
                         partition.partition(), e.offset(), rootMessage(e));
             }
             return ConsumerRecords.empty();
@@ -141,6 +152,19 @@ public class TelemetryPollLoop {
             Thread.currentThread().interrupt();
             state.stop();
         }
+    }
+
+    /** Falla de infraestructura (red, Schema Registry caido o con error 5xx): el mensaje puede estar bien. */
+    private static boolean isTransient(Throwable error) {
+        if (hasCause(error, IOException.class)) {
+            for (Throwable t = error; t != null; t = t.getCause()) {
+                if (t instanceof RestClientException rce && rce.getStatus() < 500) {
+                    return false;   // el registry respondio 4xx (p. ej. schema no existe): es el mensaje, no la red
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private static boolean hasCause(Throwable error, Class<? extends Throwable> type) {

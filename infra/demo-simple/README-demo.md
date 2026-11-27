@@ -28,7 +28,6 @@ Hazlo **una vez, antes de la charla**, en este orden. Son 5 comandos y tardan un
 - **Java 25**.
 - **Una terminal:** en Windows, **Git Bash** (en CMD no funcionan estos comandos); en Mac o Linux, la Terminal.
 - **El repositorio** descargado en tu computadora.
-- **Solo en Mac, una vez:** dentro de `infra/`, ejecuta `chmod +x *.sh`.
 
 Abre **3 terminales** y déjalas así toda la charla:
 
@@ -39,6 +38,19 @@ Abre **3 terminales** y déjalas así toda la charla:
 | **T2** | Los demás comandos | `infra/` |
 
 ### Los 5 pasos
+
+**0. Solo en Mac o Linux, una vez: dar permiso de ejecución** · desde la raíz del repo
+```bash
+cd JConf2026
+find . \( -name "*.sh" -o -name "mvnw" \) -not -path "*/target/*" -exec chmod +x {} +
+```
+Sin esto aparece `Permission denied` (en `truncate-data.sh`, en `./mvnw`, …). **No uses `sudo`**: no lo arregla y deja archivos de Maven a nombre de root. En Windows con Git Bash no hace falta.
+
+Si después sale `bad interpreter` o `$'\r': command not found`, los archivos tienen saltos de línea de Windows. Corrígelos con:
+```bash
+find . \( -name "*.sh" -o -name "mvnw" \) -not -path "*/target/*" -exec sed -i '' 's/\r$//' {} +
+```
+(En Linux usa `sed -i` sin las comillas vacías.)
 
 **1. Levantar la infraestructura** · T2
 ```bash
@@ -184,7 +196,7 @@ Compara en T2:
 ```bash
 sh compare-workers.sh
 ```
-En `veces_vs_base`, cada una se compara con su propia corrida sin Virtual Threads (la de la Prueba 2). En mi PC, **batch subió a 2.65×** (14,882.45 ev/s) y **COPY bajó a 0.56×** (3,231.39 ev/s): los mismos hilos ayudan a una estrategia y frenan a la otra.
+En `veces_vs_base`, cada una se compara con su propia corrida sin Virtual Threads (la de la Prueba 2). En mi Mac, **batch subió a 1.21×** (22,727.27 ev/s) y **COPY bajó a 0.88×** (16,863.41 ev/s); en mi PC fue 2.65× y 0.56×. Las cifras cambian con la máquina, pero el sentido es el mismo: los mismos hilos ayudan a una estrategia y frenan a la otra.
 
 **¿Por qué tanta diferencia?** (diapositiva 21) Con sublotes de 100 hay 100 sublotes, y cada uno paga su costo fijo. En batch ese costo es chico (enviar el lote y un commit); en COPY es grande (tabla temporal, COPY, `INSERT … SELECT` y commit). La pista está medida: COPY con **1 solo worker** ya cae a 0.25×, sin ningún paralelismo, y con sublotes de 125 o 250 vuelve a 0.92× y 0.98×. Sin Virtual Threads, COPY guarda los 500 eventos del poll de una vez y empata con batch. Qué paso de COPY cuesta más no se midió.
 

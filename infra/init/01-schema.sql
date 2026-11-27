@@ -25,5 +25,7 @@ CREATE TABLE IF NOT EXISTS benchmark_run (
     started_at                   TIMESTAMPTZ   NOT NULL,
     finished_at                  TIMESTAMPTZ   NOT NULL,
     duration_ms                  BIGINT        NOT NULL,
-    throughput_events_per_second NUMERIC(12,2) NOT NULL
+    throughput_events_per_second NUMERIC(12,2) NOT NULL,
+    virtual_threads              BOOLEAN       NOT NULL DEFAULT FALSE,
+    chunk_size                   INTEGER       NOT NULL DEFAULT 0   -- 0 = no aplica (sin Virtual Threads)
 );

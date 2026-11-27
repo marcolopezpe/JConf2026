@@ -1,0 +1,37 @@
+{
+  "type": "record",
+  "name": "VehicleTelemetry",
+  "namespace": "pe.marcolopez.apps.jconf.telemetry.avro",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": ["null", "string"],
+      "default": null
+    },
+    {
+      "name": "vehicleId",
+      "type": ["null", "string"],
+      "default": null
+    },
+    {
+      "name": "latitude",
+      "type": ["null", "string"],
+      "default": null
+    },
+    {
+      "name": "longitude",
+      "type": ["null", "string"],
+      "default": null
+    },
+    {
+      "name": "speedKmh",
+      "type": ["null", "string"],
+      "default": null
+    },
+    {
+      "name": "occurredAtEpochMillis",
+      "type": ["null", "string"],
+      "default": null
+    }
+  ]
+}

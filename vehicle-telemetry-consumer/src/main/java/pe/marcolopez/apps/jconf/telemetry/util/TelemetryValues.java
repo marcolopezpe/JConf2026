@@ -15,7 +15,7 @@ import io.smallrye.config.WithDefault;
  *   telemetry.retry.max-backoff-ms        tope de la espera exponencial
  *   telemetry.benchmark.idle-timeout-ms   sin mensajes por este tiempo = fin de la corrida
  */
-@ConfigMapping(prefix = "telemetry")
+@ConfigMapping(prefix = "application.telemetry")
 public interface TelemetryValues {
 
     Persistence persistence();

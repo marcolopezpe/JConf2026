@@ -1,4 +1,0 @@
-id,strategy,total_events,persisted_events,duplicated_events,failed_events,workers,jdbc_pool_size,started_at,finished_at,duration_ms,throughput_events_per_second,virtual_threads,chunk_size
-1,single,10000,10000,0,0,1,1,2026-11-20 06:31:48.724445+00,2026-11-20 06:32:12.064072+00,23339,428.47,f,0
-2,single,10000,10000,0,0,1,1,2026-11-20 06:33:37.304283+00,2026-11-20 06:34:00.865515+00,23561,424.43,f,0
-3,single,10000,10000,0,0,1,1,2026-11-20 06:34:37.069931+00,2026-11-20 06:35:00.394595+00,23324,428.74,f,0
